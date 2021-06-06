@@ -58,11 +58,11 @@ uint32_t u32_force_pow2(uint32_t i, uint32_t up) {
 
 // Driver code
 void * udptrex_recv_thread_func(void *void_ctx) {
-    int sockfd;
+
+    int sockfd, ret;
     char buffer[MAXLINE];
-    char *hello = "Hello from server";
     struct sockaddr_in servaddr, cliaddr;
-    udptrex_context_t *c = (udptrex_context_t *)void_ctx;
+    udptrex_context_t *ctx = (udptrex_context_t *)void_ctx;
 
     // Creating socket file descriptor
     if ( (sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0 ) {
@@ -87,28 +87,22 @@ void * udptrex_recv_thread_func(void *void_ctx) {
     }
     
     socklen_t len;
-    ssize_t n;
+    ssize_t nbytes_recv;
 
-    len = sizeof(cliaddr); //len is value/resuslt
-    n = recvfrom(
-        sockfd,
-        (char *)buffer, MAXLINE,
-        MSG_WAITALL,
-        ( struct sockaddr *) &cliaddr,
-        &len
-    );
-    buffer[n] = '\0';
-    printf("Client : %s\n", buffer);
-    sendto(
-        sockfd,
-        (const char *)hello,
-        strlen(hello),
-        MSG_WAITALL,
-        (const struct sockaddr *) &cliaddr,
-        len
-    );
-    printf("Hello message sent.\n");
-    
+    while(ctx && ctx->running) {
+        len = sizeof(cliaddr); //len is value/resuslt
+        nbytes_recv = recvfrom(
+            sockfd,
+            (char *)buffer, MAXLINE,
+            MSG_WAITALL,
+            ( struct sockaddr *) &cliaddr,
+            &len
+        );
+        ret = udptrex_send1(ctx, buffer, nbytes_recv);
+        if(ret) {
+            printf("E: udptrex_send1 returned %i\n", ret);
+        }
+    }
     return NULL;
 }
 

@@ -40,6 +40,7 @@ typedef struct {
     pthread_t           thread;
     // PaUtilRingBuffer    rbuf;
     lfqueue_t           q;
+    volatile uint8_t    running;
 } udptrex_context_t;
 
 udptrex_context_t * udptrex_start_context(udptrex_dir_t mode, size_t msg_size, size_t msg_count, uint16_t port);
