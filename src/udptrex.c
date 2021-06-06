@@ -162,34 +162,21 @@ void * udptrex_send_thread_func(void *void_ctx) {
 
 
 udptrex_context_t * udptrex_create_context(
-        udptrex_mode_t mode,
-        ring_buffer_size_t msg_size,
-        ring_buffer_size_t msg_count_log2,
+        udptrex_dir_t dir,
         uint16_t port)
 {
-    ring_buffer_size_t rbuf_sz;
+    /* allocate */
     udptrex_context_t *ctx = calloc(1, sizeof(udptrex_context_t));
-    if(NULL == ctx) {
-        return NULL; /* error */
-    }
-
-    assert(msg_count_log2 <= MSG_COUNT_LOG2_MAX);
-
-    ctx->data_ptr = calloc((size_t)(1<<msg_count_log2), (size_t)msg_size);
-    if(NULL == ctx->data_ptr) {
-        free(ctx);
-        return NULL;
-    }
+    if(NULL == ctx)
+        return NULL; /* error // TODO disambiguate */
 
     /* mirror + default variables */
-    ctx->mode = mode;
+    ctx->dir = dir;
     ctx->thr_state = UDPTREX_THR_NOT_STARTED;
 
-    /* init rbuf */
-    rbuf_sz = PaUtil_InitializeRingBuffer(
-        &(ctx->rbuf), msg_size, 1<<msg_count_log2, ctx->data_ptr
-    );
-    // assert rbuf_sz == (msg_size * (1<<msg_count_log2))
+    /* init lfqueue */
+    if(lfqueue_init(&(ctx->q)) == -1)
+        return NULL; /* error // TODO disambiguate */
 
     return ctx;
 }
@@ -197,27 +184,29 @@ udptrex_context_t * udptrex_create_context(
 
 int udptrex_destroy_context(udptrex_context_t *ctx) {
     int ret_out = 0;
-    if(NULL == ctx          ) ret_out = -1; // TODO
+    if(NULL == ctx          ) return -1; // TODO
 
-    if(NULL == ctx->data_ptr) ret_out = -2; // TODO
-    else free(ctx->data_ptr); // TODO check output of free
+    while(udptrex_get_qsize(ctx)) {
+        void *itm = udptrex_recv1(ctx);
+        free(itm);
+    }
 
     free((void *)ctx); // TODO check output of free
-    
-    return ret_out;
+
+    return 0;
 }
 
 
-udptrex_context_t * udptrex_start_context(udptrex_mode_t mode, size_t msg_size, size_t msg_count, uint16_t port) {
+udptrex_context_t * udptrex_start_context(udptrex_dir_t dir, size_t msg_size, size_t msg_count, uint16_t port) {
     void * thr_arg;
     int ret=1;
     void * (*func_ptr)(void *) =
-        (UDPTREX_MODE_RECV==mode) ? 
+        (UDPTREX_DIR_RECV==dir) ? 
         &udptrex_recv_thread_func :
         &udptrex_send_thread_func;
 
     // create context with thread info and ringbuffer
-    udptrex_context_t *ctx = udptrex_create_context(mode, msg_size, msg_count, port);
+    udptrex_context_t *ctx = udptrex_create_context(dir, port);
     if(ctx == NULL) {
         return NULL;
     }
@@ -250,6 +239,79 @@ int udptrex_stop_context(udptrex_context_t *ctx) {
 
     return 0;
 }
+
+
+int udptrex_get_qsize(udptrex_context_t *ctx) {
+    if(ctx) {
+        return lfqueue_size(&(ctx->q));
+    }
+    return -1;
+}
+
+
+int udptrex_send1(udptrex_context_t *ctx, void *itm, size_t len) {
+    if(ctx) {
+        void *new = calloc((size_t)1, len);
+        if(new) {
+            return lfqueue_enq(&(ctx->q), new);
+        }
+    }
+    return -1; // TODO
+}
+
+
+void * udptrex_recv1(udptrex_context_t *ctx) {
+    if(ctx) {
+        return lfqueue_deq(&(ctx->q));
+    }
+    return NULL; // TODO...
+}
+
+
+int udptrex_free1(void *itm) {
+    if(itm) {
+        free(itm);
+        return 0;
+    }
+    return -1; // TODO
+}
+
+#if 0
+int udptrex_get_read_available(udptrex_context_t *ctx) {
+    if(ctx) {
+        // ring_buffer_size_t PaUtil_GetRingBufferReadAvailable( const PaUtilRingBuffer *rbuf );
+        return (int)PaUtil_GetRingBufferReadAvailable(&(ctx->rbuf));
+    }
+    return -1; // TODO
+}
+
+
+int udptrex_get_write_available(udptrex_context_t *ctx) {
+    if(ctx) {
+        // ring_buffer_size_t PaUtil_GetRingBufferWriteAvailable( const PaUtilRingBuffer *rbuf );
+        return (int)PaUtil_GetRingBufferWriteAvailable(&(ctx->rbuf));
+    }
+    return -1; // TODO
+}
+
+
+int udptrex_write_1x(udptrex_context_t *, void *itm) {
+    if(ctx) {
+        if(ctx->scratch_1x) {
+
+            // ring_buffer_size_t PaUtil_WriteRingBuffer( PaUtilRingBuffer *rbuf, const void *data, ring_buffer_size_t elementCount );
+            return (int)PaUtil_WriteRingBuffer(
+                &(ctx->rbuf),
+                (const void *)itm,
+                (ring_buffer_size_t)1
+            );
+            return (int)PaUtil_GetRingBufferWriteAvailable(&(ctx->rbuf));
+    }
+    return -1;
+}
+
+// ring_buffer_size_t PaUtil_WriteRingBuffer( PaUtilRingBuffer *rbuf, const void *data, ring_buffer_size_t elementCount );
+#endif
 
 
 // typedef struct {

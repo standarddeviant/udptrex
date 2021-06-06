@@ -3,7 +3,9 @@
 
 #include <stdint.h>
 #include <pthread.h>
-#include <pa_ringbuffer.h>
+// #include <pa_ringbuffer.h>
+#include <lfqueue.h>
+
 
 
 #ifndef MSG_COUNT_LOG2_MAX
@@ -16,11 +18,11 @@ So a value of 10 means the maximum value for msg_count is
 
 
 /* enum fields                         */
-typedef enum udptrex_mode_t {
-    UDPTREX_MODE_RECV,
-    UDPTREX_MODE_SEND,
+typedef enum udptrex_dir_t {
+    UDPTREX_DIR_RECV,
+    UDPTREX_DIR_SEND,
     UDPTREX_NUM_MODES
-}udptrex_mode_t;
+}udptrex_dir_t;
 typedef enum udptrex_thr_state_t {
     UDPTREX_THR_NOT_STARTED,
     UDPTREX_THR_STARTED,
@@ -31,17 +33,20 @@ typedef enum udptrex_thr_state_t {
 
 
 typedef struct {
-    udptrex_mode_t      mode;
+    udptrex_dir_t       dir;
     udptrex_thr_state_t thr_state;
     uint16_t            port;
     uint32_t            thr_id;
     pthread_t           thread;
-    PaUtilRingBuffer    rbuf;
-    void *              data_ptr;  
+    // PaUtilRingBuffer    rbuf;
+    lfqueue_t           q;
 } udptrex_context_t;
 
-udptrex_context_t * udptrex_start_context(udptrex_mode_t mode, size_t msg_size, size_t msg_count, uint16_t port);
+udptrex_context_t * udptrex_start_context(udptrex_dir_t mode, size_t msg_size, size_t msg_count, uint16_t port);
 int udptrex_stop_context(udptrex_context_t *ctx);
+int udptrex_get_qsize(udptrex_context_t *ctx);
+int udptrex_send1(udptrex_context_t *ctx, void *itm, size_t len);
+void * udptrex_recv1(udptrex_context_t *ctx);
 
 
 // pthread_create(&fileio_thread, NULL, *fileio_function, (void *) &(thr));
