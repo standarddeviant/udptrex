@@ -14,7 +14,6 @@
 #include <udptrex.h>
 
 
-#define PORT         42042
 #ifndef MAX_RECV_SZ
 #define MAX_RECV_SZ  (1024)
 #endif
@@ -26,42 +25,7 @@
 void * udptrex_recv_thread_func(void *void_ctx);
 void * udptrex_send_thread_func(void *void_ctx);
 
-/* power-of-two convenience functions */
-uint32_t u32_set_bits(uint32_t i);
-uint32_t u32_msb(uint32_t x);
-uint32_t u32_is_pow2(uint32_t i);
-uint32_t u32_force_pow2(uint32_t i, uint32_t up);
-uint32_t u32_set_bits(uint32_t i) {
-     // Java: use int, and use >>> instead of >>. Or use Integer.bitCount()
-     // C or C++: use uint32_t
-     i = i - ((i >> 1) & 0x55555555);        // add pairs of bits
-     i = (i & 0x33333333) + ((i >> 2) & 0x33333333);  // quads
-     i = (i + (i >> 4)) & 0x0F0F0F0F;        // groups of 8
-     return (i * 0x01010101) >> 24;          // horizontal sum of bytes
-}
-uint32_t u32_msb(uint32_t x) {
-    static const uint32_t bval[] =
-    { 0,1,2,2,3,3,3,3,4,4,4,4,4,4,4,4 };
 
-    unsigned int base = 0;
-    if (x & 0xFFFF0000) { base += 32/2; x >>= 32/2; }
-    if (x & 0x0000FF00) { base += 32/4; x >>= 32/4; }
-    if (x & 0x000000F0) { base += 32/8; x >>= 32/8; }
-    return base + bval[x];
-}
-uint32_t u32_is_pow2(uint32_t i) {
-    return (1 == u32_set_bits(i));
-}
-uint32_t u32_force_pow2(uint32_t i, uint32_t up) {
-    if(u32_is_pow2(i)) return i;
-    return (uint32_t) up ?
-        1 << (u32_msb(i) + 1) :
-        1 << (u32_msb(i) + 0) ;
-}
-
-
-
-// Driver code
 void * udptrex_recv_thread_func(void *void_ctx) {
 
     int sockfd, ret;
@@ -81,7 +45,7 @@ void * udptrex_recv_thread_func(void *void_ctx) {
     // Filling server information
     servaddr.sin_family = AF_INET; // IPv4
     servaddr.sin_addr.s_addr = INADDR_ANY;
-    servaddr.sin_port = htons(PORT);
+    servaddr.sin_port = htons(ctx->port);
 
     // Bind the socket with the server address
     if(bind(sockfd, (const struct sockaddr *)&servaddr,
@@ -135,7 +99,7 @@ void * udptrex_send_thread_func(void *void_ctx) {
     
     // Filling server information
     servaddr.sin_family = AF_INET;
-    servaddr.sin_port = htons(PORT);
+    servaddr.sin_port = htons(ctx->port);
     servaddr.sin_addr.s_addr = INADDR_ANY;
     
     ssize_t n;
@@ -174,6 +138,7 @@ udptrex_context_t * udptrex_create_context(
     ctx->dir = dir;
     ctx->thr_state = UDPTREX_THR_NOT_STARTED;
     ctx->running = 1;
+    ctx->port = port;
 
     /* init lfqueue */
     if(lfqueue_init(&(ctx->q)) == -1)
@@ -299,51 +264,3 @@ int udptrex_free1_sds(sds s) {
     }
     return -1; // TODO
 }
-
-
-#if 0
-int udptrex_get_read_available(udptrex_context_t *ctx) {
-    if(ctx) {
-        // ring_buffer_size_t PaUtil_GetRingBufferReadAvailable( const PaUtilRingBuffer *rbuf );
-        return (int)PaUtil_GetRingBufferReadAvailable(&(ctx->rbuf));
-    }
-    return -1; // TODO
-}
-
-
-int udptrex_get_write_available(udptrex_context_t *ctx) {
-    if(ctx) {
-        // ring_buffer_size_t PaUtil_GetRingBufferWriteAvailable( const PaUtilRingBuffer *rbuf );
-        return (int)PaUtil_GetRingBufferWriteAvailable(&(ctx->rbuf));
-    }
-    return -1; // TODO
-}
-
-
-int udptrex_write_1x(udptrex_context_t *, void *itm) {
-    if(ctx) {
-        if(ctx->scratch_1x) {
-
-            // ring_buffer_size_t PaUtil_WriteRingBuffer( PaUtilRingBuffer *rbuf, const void *data, ring_buffer_size_t elementCount );
-            return (int)PaUtil_WriteRingBuffer(
-                &(ctx->rbuf),
-                (const void *)itm,
-                (ring_buffer_size_t)1
-            );
-            return (int)PaUtil_GetRingBufferWriteAvailable(&(ctx->rbuf));
-    }
-    return -1;
-}
-
-// ring_buffer_size_t PaUtil_WriteRingBuffer( PaUtilRingBuffer *rbuf, const void *data, ring_buffer_size_t elementCount );
-#endif
-
-
-// typedef struct {
-//     unsigned int flags;
-//     unsigned int status;
-//     pthread_id_np_t tid;
-//     pthread_t thread;
-//     PaUtilRingBuffer *rbuf;
-// } udptrex_context_t;
-
