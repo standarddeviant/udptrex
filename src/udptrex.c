@@ -105,7 +105,7 @@ void * udptrex_recv_thread_func(void *void_ctx) {
             (struct sockaddr *) &cliaddr,
             &len
         );
-        printf("DBG: buf=%p, nbytes_recv=%u\n", recvbuf, nbytes_recv);
+        printf("DBG: buf=%p, nbytes_recv=%zu\n", recvbuf, nbytes_recv);
         ret = udptrex_send1(ctx, recvbuf, nbytes_recv);
         if(ret)
             printf("E: udptrex_send1 returned %i\n", ret);
@@ -197,7 +197,7 @@ int udptrex_destroy_context(udptrex_context_t *ctx) {
 }
 
 
-udptrex_context_t * udptrex_start_context(udptrex_dir_t dir, size_t msg_size, size_t msg_count, uint16_t port) {
+udptrex_context_t * udptrex_start_context(udptrex_dir_t dir, uint16_t port) {
     void * thr_arg;
     int ret=1;
     void * (*func_ptr)(void *) =

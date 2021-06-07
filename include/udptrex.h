@@ -43,13 +43,14 @@ typedef struct {
     volatile uint8_t             running;
 } udptrex_context_t;
 
-udptrex_context_t * udptrex_start_context(udptrex_dir_t mode, size_t msg_size, size_t msg_count, uint16_t port);
+udptrex_context_t * udptrex_start_context(udptrex_dir_t mode, uint16_t port);
 int udptrex_stop_context(udptrex_context_t *ctx);
 int udptrex_get_qsize(udptrex_context_t *ctx);
 int udptrex_send1(udptrex_context_t *ctx, void *itm, size_t len);
 void * udptrex_recv1(udptrex_context_t *ctx, size_t *len);
 sds udptrex_recv1_sds(udptrex_context_t *ctx);
 int udptrex_free1(void *itm);
+int udptrex_free1_sds(sds);
 
 
 // pthread_create(&fileio_thread, NULL, *fileio_function, (void *) &(thr));
