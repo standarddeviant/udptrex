@@ -40,9 +40,7 @@ int main(void) {
         lfqueue_sleep(10);
     }
 
-    // ret = udptrex_stop_context(ctx);
-
-    // udptrex_stop_context
+    ret = udptrex_stop_context(ctx);
     printf("%s: udptrex_stop_context returned %i\n", ret ? "E" : "I", ret);
 
     return 0;

@@ -15,8 +15,12 @@
 
 
 #define PORT         42042
+#ifndef MAX_RECV_SZ
 #define MAX_RECV_SZ  (1024)
+#endif
+#ifndef MAX_SEND_SZ
 #define MAX_SEND_SZ  (1024)
+#endif
 
 
 void * udptrex_recv_thread_func(void *void_ctx);
@@ -101,7 +105,7 @@ void * udptrex_recv_thread_func(void *void_ctx) {
             (struct sockaddr *) &cliaddr,
             &len
         );
-        printf("DBG: buf=%p, nbytes_recv\n", recvbuf, nbytes_recv);
+        printf("DBG: buf=%p, nbytes_recv=%u\n", recvbuf, nbytes_recv);
         ret = udptrex_send1(ctx, recvbuf, nbytes_recv);
         if(ret)
             printf("E: udptrex_send1 returned %i\n", ret);
